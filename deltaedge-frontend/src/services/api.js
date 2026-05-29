@@ -48,15 +48,15 @@ export const userAPI = {
   changePassword:(data) => api.patch('/api/users/change-password', data),
 }
 
-// ── COINS / MARKET ──
+// ── COINS / MARKET (FIXED ROUTES) ──
 export const coinAPI = {
-  getAll:     (page = 1) => api.get(`/coins?page=${page}`),
-  getById:    (id)       => api.get(`/coins/${id}`),
-  getTop50:   ()         => api.get('/coins/top50'),
-  getTrending:()         => api.get('/coins/trending'),
-  search:     (q)        => api.get(`/coins/search?q=${q}`),
-  getDetails: (id)       => api.get(`/coins/${id}/coin-details`),
-  getChart:   (id, days) => api.get(`/coins/${id}/chart?days=${days}`),
+  getAll:     (page = 1) => api.get(`/api/coins?page=${page}`),
+  getById:    (id)       => api.get(`/api/coins/${id}`),
+  getTop50:   ()         => api.get('/api/coins/top50'),
+  getTrending:()         => api.get('/api/coins/trending'),
+  search:     (q)        => api.get(`/api/coins/search?q=${q}`),
+  getDetails: (id)       => api.get(`/api/coins/${id}/coin-details`),
+  getChart:   (id, days) => api.get(`/api/coins/${id}/chart?days=${days}`),
 }
 
 // ── WATCHLIST ──
