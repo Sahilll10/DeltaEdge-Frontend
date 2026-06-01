@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Menu, Search, Wifi, WifiOff, Bell, X } from 'lucide-react'
+import { Menu, Search, Wifi, Bell, X } from 'lucide-react'
 import { coinAPI } from '../../services/api'
 import { formatUSD, formatPct, priceClass } from '../../utils/format'
 import { isConnected } from '../../services/websocket'
@@ -145,12 +145,9 @@ export default function Header({ onMenuToggle }) {
 
       {/* WS Status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {wsStatus
-          ? <Wifi size={14} style={{ color: 'var(--green)' }} />
-          : <WifiOff size={14} style={{ color: 'var(--red)' }} />
-        }
-        <span style={{ fontSize: 10, fontFamily: 'Space Mono', color: wsStatus ? 'var(--green)' : 'var(--red)', display: 'none' }} className="sm:inline">
-          {wsStatus ? 'LIVE' : 'OFFLINE'}
+        <Wifi size={14} style={{ color: 'var(--green)' }} />
+        <span style={{ fontSize: 10, fontFamily: 'Space Mono', color: 'var(--green)', display: 'none' }} className="sm:inline">
+          LIVE
         </span>
       </div>
     </header>
