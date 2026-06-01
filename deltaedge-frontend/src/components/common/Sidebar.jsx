@@ -118,7 +118,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>Sign Out</span>
           </button>
           <div style={{ textAlign: 'center', marginTop: 12, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Space Mono' }}>
-            DELTAEDGE © 2025
+            DELTAEDGE © 2026
           </div>
         </div>
       </aside>
