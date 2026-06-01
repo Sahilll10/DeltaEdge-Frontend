@@ -1,18 +1,21 @@
 // ── Currency formatting
-export const formatUSD = (n) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n || 0)
+export const formatINR = (n) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0)
+
+// Alias export to prevent other pages from crashing during your transition
+export const formatUSD = formatINR 
 
 export const formatCompact = (n) => {
-  if (!n) return '$0'
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`
-  if (n >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`
-  if (n >= 1e6)  return `$${(n / 1e6).toFixed(2)}M`
-  if (n >= 1e3)  return `$${(n / 1e3).toFixed(2)}K`
-  return `$${n.toFixed(2)}`
+  if (!n) return '₹0'
+  if (n >= 1e12) return `₹${(n / 1e12).toFixed(2)}T`
+  if (n >= 1e9)  return `₹${(n / 1e9).toFixed(2)}B`
+  if (n >= 1e6)  return `₹${(n / 1e6).toFixed(2)}M`
+  if (n >= 1e3)  return `₹${(n / 1e3).toFixed(2)}K`
+  return `₹${n.toFixed(2)}`
 }
 
 export const formatNumber = (n, decimals = 2) =>
-  new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals }).format(n || 0)
+  new Intl.NumberFormat('en-IN', { maximumFractionDigits: decimals }).format(n || 0)
 
 // ── Percentage
 export const formatPct = (n) => {
@@ -43,10 +46,10 @@ export const truncate = (str, n = 8) =>
 
 // ── Risk colour mapping
 export const riskColor = (score) => {
-  if (score >= 80) return '#FF3D5E'
-  if (score >= 60) return '#FFB020'
-  if (score >= 40) return '#60A5FA'
-  return '#00E5A0'
+  if (score >= 80) return '#dc2626'
+  if (score >= 60) return '#d97706'
+  if (score >= 40) return '#2563eb'
+  return '#16a34a'
 }
 
 export const riskLabel = (score) => {
@@ -71,7 +74,7 @@ export const txTypeColor = (type) => {
   switch (type?.toUpperCase()) {
     case 'DEPOSIT':  return 'var(--green)'
     case 'WITHDRAWAL': return 'var(--red)'
-    case 'BUY_ASSET':  return '#60A5FA'
+    case 'BUY_ASSET':  return '#2563eb'
     case 'SELL_ASSET': return 'var(--gold)'
     case 'TRANSFER_IN':  return 'var(--green)'
     case 'TRANSFER_OUT': return 'var(--red)'
