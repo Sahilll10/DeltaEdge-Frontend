@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, RefreshCw, Trash2 } from 'lucide-react'
+import { BarChart2, RefreshCw, Trash2, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import Spinner    from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
-import { orderAPI, coinAPI } from '../services/api'
-import { formatUSD, fmtDateTime } from '../utils/format'
+import { orderAPI } from '../services/api'
+import { formatUSD, formatNumber, fmtDateTime } from '../utils/format'
 import { useToast } from '../context/ToastContext'
 
 export default function TradingPage() {
@@ -19,7 +19,9 @@ export default function TradingPage() {
     try {
       const r = await orderAPI.getAll()
       setOrders(r.data || [])
-    } catch { toast.error('Failed to load orders') }
+    } catch { 
+      toast.error('Failed to load orders') 
+    }
     setLoading(false)
   }
 
@@ -30,41 +32,53 @@ export default function TradingPage() {
       await orderAPI.cancel(id)
       toast.success('Order cancelled')
       load()
-    } catch (err) { toast.error(err.response?.data?.message || 'Cancel failed') }
+    } catch (err) { 
+      toast.error(err.response?.data?.message || 'Cancel failed') 
+    }
   }
 
   const FILTERS = ['ALL', 'BUY', 'SELL']
   const filtered = filter === 'ALL' ? orders : orders.filter(o => o.orderType === filter)
 
-  const totalBuy   = orders.filter(o => o.orderType === 'BUY').reduce((s, o) => s + (o.price || 0), 0)
-  const totalSell  = orders.filter(o => o.orderType === 'SELL').reduce((s, o) => s + (o.price || 0), 0)
+  // Calc Stats with fallback for field names 'price' vs 'totalPrice'
+  const totalBuy   = orders.filter(o => o.orderType === 'BUY').reduce((s, o) => s + (o.price || o.totalPrice || 0), 0)
+  const totalSell  = orders.filter(o => o.orderType === 'SELL').reduce((s, o) => s + (o.price || o.totalPrice || 0), 0)
 
   return (
     <div className="animate-fade-in">
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <BarChart2 size={18} style={{ color: 'var(--accent)' }} /> Order Management
           </div>
-          <div className="section-subtitle">All trades with idempotency-protected execution</div>
+          <div className="section-subtitle">Real-time trade execution and lifecycle tracking</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-green"  onClick={() => navigate('/market')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>New Order</button>
-          <button className="btn-ghost"  onClick={load} style={{ padding: '9px 12px' }}><RefreshCw size={15} /></button>
+          <button className="btn-green" onClick={() => navigate('/market')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px' }}>
+            New Order
+          </button>
+          <button className="btn-ghost" onClick={load} style={{ padding: '9px 12px' }}>
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'TOTAL ORDERS', value: orders.length,  color: 'var(--text-primary)' },
-          { label: 'BUY ORDERS',   value: orders.filter(o => o.orderType === 'BUY').length,  color: 'var(--green)' },
-          { label: 'SELL ORDERS',  value: orders.filter(o => o.orderType === 'SELL').length, color: 'var(--red)' },
-          { label: 'NET P&L',      value: formatUSD(totalSell - totalBuy),    color: totalSell >= totalBuy ? 'var(--green)' : 'var(--red)' },
+          { label: 'TOTAL ORDERS', value: orders.length, color: 'var(--text-primary)' },
+          { label: 'BUY VOLUME', value: formatUSD(totalBuy), color: 'var(--green)' },
+          { label: 'SELL VOLUME', value: formatUSD(totalSell), color: 'var(--red)' },
+          { 
+            label: 'EST. NET P&L', 
+            value: formatUSD(totalSell - totalBuy), 
+            color: (totalSell - totalBuy) >= 0 ? 'var(--green)' : 'var(--red)' 
+          },
         ].map(s => (
-          <div key={s.label} className="glass-card" style={{ padding: '14px 18px' }}>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Chakra Petch', letterSpacing: 1, marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontFamily: 'Space Mono', fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
+          <div key={s.label} className="glass-card" style={{ padding: '16px 20px', borderLeft: `4px solid ${s.color}` }}>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Chakra Petch', letterSpacing: 1, marginBottom: 6, fontWeight: 700 }}>{s.label}</div>
+            <div style={{ fontFamily: 'Space Mono', fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -72,43 +86,101 @@ export default function TradingPage() {
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {FILTERS.map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={`tab-btn ${filter === f ? 'active' : ''}`} style={{ flex: 'none', padding: '7px 18px' }}>{f}</button>
+          <button 
+            key={f} 
+            onClick={() => setFilter(f)} 
+            className={`tab-btn ${filter === f ? 'active' : ''}`} 
+            style={{ flex: 'none', padding: '7px 22px', fontWeight: 600, fontSize: 12 }}
+          >
+            {f}
+          </button>
         ))}
       </div>
 
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
+      {/* Main Table */}
+      <div className="glass-card" style={{ overflow: 'hidden', background: '#fff' }}>
         <table className="data-table">
           <thead>
-            <tr><th>ID</th><th>COIN</th><th>TYPE</th><th>QUANTITY</th><th>PRICE</th><th>STATUS</th><th>DATE</th><th></th></tr>
+            <tr>
+              <th>ID</th>
+              <th>ASSET</th>
+              <th>TYPE</th>
+              <th>QUANTITY</th>
+              <th>PRICE</th>
+              <th>STATUS</th>
+              <th>EXECUTION DATE</th>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8}><Spinner /></td></tr>
+              <tr><td colSpan={8} style={{ padding: 40 }}><Spinner /></td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={8}><EmptyState title="No orders" subtitle="Head to Market to place your first trade" /></td></tr>
+              <tr><td colSpan={8}><EmptyState title="No records found" subtitle="Head to Market to initiate your first position" /></td></tr>
             ) : filtered.map(order => (
               <tr key={order.id}>
-                <td style={{ fontFamily: 'Space Mono', fontSize: 11, color: 'var(--text-dim)' }}>#{order.id}</td>
+                {/* ID Fix: Show last 6 chars of UUID or ID */}
+                <td style={{ fontFamily: 'Space Mono', fontSize: 11, color: 'var(--text-dim)' }}>
+                   #{order.id?.toString().slice(-6).toUpperCase()}
+                </td>
+
+                {/* ASSET FIX: Fallback to coinId if nested coin object is null */}
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => navigate(`/market/${order.coin?.id}`)}>
-                    <img src={order.coin?.image} alt="" style={{ width: 20, height: 20, borderRadius: '50%' }} onError={e => e.target.style.display='none'} />
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{order.coin?.symbol?.toUpperCase() || '—'}</span>
+                  <div 
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} 
+                    onClick={() => navigate(`/market/${order.coin?.id || order.coinId}`)}
+                  >
+                    {order.coin?.image ? (
+                        <img src={order.coin.image} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
+                    ) : (
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-void)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>
+                            {order.coinId?.slice(0,2).toUpperCase()}
+                        </div>
+                    )}
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>
+                        {order.coin?.symbol?.toUpperCase() || order.coinId?.toUpperCase() || '—'}
+                    </span>
                   </div>
                 </td>
+
                 <td>
-                  <span className={`badge ${order.orderType === 'BUY' ? 'badge-green' : 'badge-red'}`}>{order.orderType}</span>
-                </td>
-                <td style={{ fontFamily: 'Space Mono', fontSize: 13 }}>{order.quantity?.toFixed(6) || '—'}</td>
-                <td style={{ fontFamily: 'Space Mono', fontSize: 13 }}>{formatUSD(order.price)}</td>
-                <td>
-                  <span className={`badge ${order.status === 'SUCCESS' ? 'badge-green' : order.status === 'PENDING' ? 'badge-gold' : 'badge-red'}`}>
-                    {order.status || 'COMPLETED'}
+                  <span className={`badge ${order.orderType === 'BUY' ? 'badge-green' : 'badge-red'}`} style={{ gap: 4 }}>
+                    {order.orderType === 'BUY' ? <ArrowUpRight size={10}/> : <ArrowDownRight size={10}/>}
+                    {order.orderType}
                   </span>
                 </td>
-                <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{fmtDateTime(order.timestamp || order.createdAt)}</td>
+
+                {/* QUANTITY FIX: Fallback to 'amount' if 'quantity' is missing */}
+                <td style={{ fontFamily: 'Space Mono', fontSize: 13, fontWeight: 500 }}>
+                  {formatNumber(order.quantity || order.amount || 0, 6)}
+                </td>
+
+                {/* PRICE FIX: Fallback to 'totalPrice' */}
+                <td style={{ fontFamily: 'Space Mono', fontSize: 13, fontWeight: 600 }}>
+                  {formatUSD(order.price || order.totalPrice)}
+                </td>
+
                 <td>
-                  {order.status === 'PENDING' && (
-                    <button onClick={() => cancelOrder(order.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', display: 'flex' }}>
+                  <span className={`badge ${order.status === 'SUCCESS' || order.status === 'COMPLETED' ? 'badge-green' : order.status === 'PENDING' ? 'badge-gold' : 'badge-red'}`}>
+                    {order.status || 'SUCCESS'}
+                  </span>
+                </td>
+
+                {/* DATE FIX: Fallback for 'timestamp' vs 'createdAt' */}
+                <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Clock size={12} opacity={0.6} />
+                    {fmtDateTime(order.timestamp || order.createdAt || new Date())}
+                  </div>
+                </td>
+
+                <td style={{ textAlign: 'right', paddingRight: 20 }}>
+                  {(order.status === 'PENDING' || !order.status) && (
+                    <button 
+                      onClick={() => cancelOrder(order.id)} 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', display: 'inline-flex', padding: 4 }}
+                      title="Cancel Order"
+                    >
                       <Trash2 size={14} />
                     </button>
                   )}
