@@ -18,6 +18,8 @@ export default function TradingPage() {
     setLoading(true)
     try {
       const r = await orderAPI.getAll()
+      // DEBUG: Log this to your browser console (F12) to see what the backend is actually sending
+      console.log("ORDER_DATA_FROM_BACKEND:", r.data)
       setOrders(r.data || [])
     } catch { 
       toast.error('Failed to load orders') 
@@ -27,22 +29,7 @@ export default function TradingPage() {
 
   useEffect(() => { load() }, [])
 
-  const cancelOrder = async (id) => {
-    try {
-      await orderAPI.cancel(id)
-      toast.success('Order cancelled')
-      load()
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Cancel failed') 
-    }
-  }
-
-  const FILTERS = ['ALL', 'BUY', 'SELL']
   const filtered = filter === 'ALL' ? orders : orders.filter(o => o.orderType === filter)
-
-  // Calc Stats with fallback for field names 'price' vs 'totalPrice'
-  const totalBuy   = orders.filter(o => o.orderType === 'BUY').reduce((s, o) => s + (o.price || o.totalPrice || 0), 0)
-  const totalSell  = orders.filter(o => o.orderType === 'SELL').reduce((s, o) => s + (o.price || o.totalPrice || 0), 0)
 
   return (
     <div className="animate-fade-in">
@@ -55,46 +42,11 @@ export default function TradingPage() {
           <div className="section-subtitle">Real-time trade execution and lifecycle tracking</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-green" onClick={() => navigate('/market')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px' }}>
-            New Order
-          </button>
+          <button className="btn-green" onClick={() => navigate('/market')} style={{ padding: '9px 16px' }}>New Order</button>
           <button className="btn-ghost" onClick={load} style={{ padding: '9px 12px' }}>
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: 'TOTAL ORDERS', value: orders.length, color: 'var(--text-primary)' },
-          { label: 'BUY VOLUME', value: formatUSD(totalBuy), color: 'var(--green)' },
-          { label: 'SELL VOLUME', value: formatUSD(totalSell), color: 'var(--red)' },
-          { 
-            label: 'EST. NET P&L', 
-            value: formatUSD(totalSell - totalBuy), 
-            color: (totalSell - totalBuy) >= 0 ? 'var(--green)' : 'var(--red)' 
-          },
-        ].map(s => (
-          <div key={s.label} className="glass-card" style={{ padding: '16px 20px', borderLeft: `4px solid ${s.color}` }}>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'Chakra Petch', letterSpacing: 1, marginBottom: 6, fontWeight: 700 }}>{s.label}</div>
-            <div style={{ fontFamily: 'Space Mono', fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {FILTERS.map(f => (
-          <button 
-            key={f} 
-            onClick={() => setFilter(f)} 
-            className={`tab-btn ${filter === f ? 'active' : ''}`} 
-            style={{ flex: 'none', padding: '7px 22px', fontWeight: 600, fontSize: 12 }}
-          >
-            {f}
-          </button>
-        ))}
       </div>
 
       {/* Main Table */}
@@ -108,87 +60,59 @@ export default function TradingPage() {
               <th>QUANTITY</th>
               <th>PRICE</th>
               <th>STATUS</th>
-              <th>EXECUTION DATE</th>
-              <th></th>
+              <th>DATE</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ padding: 40 }}><Spinner /></td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={8}><EmptyState title="No records found" subtitle="Head to Market to initiate your first position" /></td></tr>
+              <tr><td colSpan={7} style={{ padding: 40 }}><Spinner /></td></tr>
             ) : filtered.map(order => (
               <tr key={order.id}>
-                {/* ID Fix: Show last 6 chars of UUID or ID */}
                 <td style={{ fontFamily: 'Space Mono', fontSize: 11, color: 'var(--text-dim)' }}>
-                   #{order.id?.toString().slice(-6).toUpperCase()}
+                   #{order.id?.toString().slice(-4).toUpperCase()}
                 </td>
 
-                {/* ASSET FIX: Fallback to coinId if nested coin object is null */}
-                <td>
-                  <div 
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} 
-                    onClick={() => navigate(`/market/${order.coin?.id || order.coinId}`)}
-                  >
-                    {order.coin?.image ? (
-                        <img src={order.coin.image} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
-                    ) : (
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-void)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>
-                            {order.coinId?.slice(0,2).toUpperCase()}
-                        </div>
-                    )}
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>
-                        {order.coin?.symbol?.toUpperCase() || order.coinId?.toUpperCase() || '—'}
+                {/* ASSET FALLBACK LOGIC */}
+                <td style={{ fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {order.coin?.image && <img src={order.coin.image} style={{ width: 18, height: 18, borderRadius: '50%' }} alt="" />}
+                    <span>
+                        {/* Checks for full object, then flat coinId, then flat symbol */}
+                        {order.coin?.symbol?.toUpperCase() || order.coinId?.toUpperCase() || order.symbol?.toUpperCase() || 'N/A'}
                     </span>
                   </div>
                 </td>
 
                 <td>
-                  <span className={`badge ${order.orderType === 'BUY' ? 'badge-green' : 'badge-red'}`} style={{ gap: 4 }}>
-                    {order.orderType === 'BUY' ? <ArrowUpRight size={10}/> : <ArrowDownRight size={10}/>}
+                  <span className={`badge ${order.orderType === 'BUY' ? 'badge-green' : 'badge-red'}`}>
                     {order.orderType}
                   </span>
                 </td>
 
-                {/* QUANTITY FIX: Fallback to 'amount' if 'quantity' is missing */}
-                <td style={{ fontFamily: 'Space Mono', fontSize: 13, fontWeight: 500 }}>
-                  {formatNumber(order.quantity || order.amount || 0, 6)}
+                {/* QUANTITY FALLBACK LOGIC */}
+                <td style={{ fontFamily: 'Space Mono', fontSize: 13 }}>
+                  {/* Checks every common backend name for quantity */}
+                  {formatNumber(order.quantity || order.amount || order.qty || order.size || 0, 6)}
                 </td>
 
-                {/* PRICE FIX: Fallback to 'totalPrice' */}
                 <td style={{ fontFamily: 'Space Mono', fontSize: 13, fontWeight: 600 }}>
-                  {formatUSD(order.price || order.totalPrice)}
+                  {formatUSD(order.price || order.totalPrice || 0)}
                 </td>
 
                 <td>
-                  <span className={`badge ${order.status === 'SUCCESS' || order.status === 'COMPLETED' ? 'badge-green' : order.status === 'PENDING' ? 'badge-gold' : 'badge-red'}`}>
+                  <span className="badge badge-green" style={{ background: 'rgba(22, 163, 74, 0.1)', color: 'var(--green)' }}>
                     {order.status || 'SUCCESS'}
                   </span>
                 </td>
 
-                {/* DATE FIX: Fallback for 'timestamp' vs 'createdAt' */}
                 <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={12} opacity={0.6} />
                     {fmtDateTime(order.timestamp || order.createdAt || new Date())}
-                  </div>
-                </td>
-
-                <td style={{ textAlign: 'right', paddingRight: 20 }}>
-                  {(order.status === 'PENDING' || !order.status) && (
-                    <button 
-                      onClick={() => cancelOrder(order.id)} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', display: 'inline-flex', padding: 4 }}
-                      title="Cancel Order"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {filtered.length === 0 && !loading && <EmptyState title="No orders found" subtitle="Place a trade in the Market tab" />}
       </div>
     </div>
   )
